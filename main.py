@@ -23,21 +23,37 @@ class WishketbotV2:
         self.json_array = []
         self.base_url = "https://www.wishket.com"
         self.choice_dev_project_url = "/project/?d=M4JwLgvAdgpg7kA%3D"
-        self.css_name_links = "subtitle-2-medium project-link"
-        self.css_name_titles = "subtitle-1-half-medium mb10"
-        self.css_name_budgets = "body-1-medium"
-        self.css_name_terms = "body-1-medium"
-        self.css_name_skills = "skill-chip body-3 text600"
-        self.css_name_pj_type = "status-mark project-type-mark"
-        self.css_name_locations = "body-3 text500 location-data"
+        self.base_project_info_div = "div > section.project-organic-info"
+        self.selector_links = self.base_project_info_div + " > a"
+        self.selector_titles = self.base_project_info_div + " > a > p"
+        self.selector_budgets = (
+            self.base_project_info_div
+            + " > div.project-core-info.mb10 > p.budget.body-1.text700 > span"
+        )
+        self.selector_terms = (
+            self.base_project_info_div
+            + " > div.project-core-info.mb10 > p.term.body-1.text700 > span"
+        )
+        self.selector_pj_type = (
+            self.base_project_info_div
+            + " > div.project-minor-info > div.project-status-label.recruiting-status > div"
+        )
+        self.selector_skills = (
+            self.base_project_info_div
+            + " > div.project-minor-info > div.project-skills-info > span"
+        )
+        self.selector_locations = (
+            self.base_project_info_div
+            + " > div.project-minor-info > p.body-3.text500.location-data"
+        )
 
     def start(self):
         html = requests.get(self.base_url + self.choice_dev_project_url).text
-        soup = BeautifulSoup(html, "html.parser")
+        soup = BeautifulSoup(html, "lxml")
         old_data = self.get_old_data()
-        project_info_boxes = soup.find_all("div", {"class": "project-info-box"})
+        project_info_boxes = soup.select("#projectListView>div>div")
         for project_info_box in project_info_boxes:
-            link = project_info_box.find("a", {"class": self.css_name_links})["href"]
+            link = project_info_box.select_one(self.selector_links)["href"]
             link = self.base_url + link
             print(old_data[0]["link"])
             print(link)
@@ -47,26 +63,17 @@ class WishketbotV2:
             if old_data[0]["link"] == link:
                 break
 
-            title = project_info_box.find("p", {"class": self.css_name_titles}).text
-            budget = project_info_box.find_all(
-                "span", {"class": self.css_name_budgets}
-            )[0].text
-            term = project_info_box.find_all("span", {"class": self.css_name_terms})[
-                1
-            ].text
-            pj_type = project_info_box.find(
-                "div", {"class": self.css_name_pj_type}
-            ).text
+            title = project_info_box.select_one(self.selector_titles).text
+            print(title)
+            budget = project_info_box.select_one(self.selector_budgets).text
+            term = project_info_box.select_one(self.selector_terms).text
+            pj_type = project_info_box.select_one(self.selector_pj_type).text
             skills = [
-                skill.text
-                for skill in project_info_box.find_all(
-                    "span", {"class": self.css_name_skills}
-                )
+                skill.text for skill in project_info_box.select(self.selector_skills)
             ]
             location = (
-                project_info_box.find("p", {"class": self.css_name_locations}).text
-                if project_info_box.find("p", {"class": self.css_name_locations})
-                is not None
+                project_info_box.select_one(self.selector_locations).text
+                if project_info_box.select_one(self.selector_locations) is not None
                 else ""
             )
 
@@ -79,6 +86,7 @@ class WishketbotV2:
                 "location": location,
                 "link": link,
             }
+            print(pj_obj)
             self.json_array.append(pj_obj)
 
         print(self.json_array)
